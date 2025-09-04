@@ -1,8 +1,74 @@
 document.addEventListener("DOMContentLoaded", function() {
     let game = new Chess();
     let useDepth = true;
-    let currentMode = 'Player vs Engine';
+    let currentMode = 'Player vs Player';
     let board;
+    
+    // Timer variables
+    let whiteTime = 600; // 10 minutes in seconds
+    let blackTime = 600; // 10 minutes in seconds
+    let currentTimer = null;
+    let isTimerRunning = false;
+    let gameStarted = false;
+    
+    // Timer functions
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    function updateTimerDisplay() {
+        document.getElementById('white-timer').textContent = formatTime(whiteTime);
+        document.getElementById('black-timer').textContent = formatTime(blackTime);
+    }
+    
+    function startTimer() {
+        if (isTimerRunning) return;
+        isTimerRunning = true;
+        currentTimer = setInterval(() => {
+            if (game.turn() === 'w') {
+                whiteTime--;
+                if (whiteTime <= 0) {
+                    whiteTime = 0;
+                    stopTimer();
+                    announceGameOver('Black wins on time!');
+                    return;
+                }
+            } else {
+                blackTime--;
+                if (blackTime <= 0) {
+                    blackTime = 0;
+                    stopTimer();
+                    announceGameOver('White wins on time!');
+                    return;
+                }
+            }
+            updateTimerDisplay();
+        }, 1000);
+    }
+    
+    function announceGameOver(message) {
+        $('#game-score').text(message);
+        announced_game_over = true;
+    }
+    
+    function stopTimer() {
+        if (!isTimerRunning) return;
+        isTimerRunning = false;
+        if (currentTimer) {
+            clearInterval(currentTimer);
+            currentTimer = null;
+        }
+    }
+    
+    function resetTimers() {
+        stopTimer();
+        whiteTime = 600; // 10 minutes
+        blackTime = 600; // 10 minutes
+        gameStarted = false;
+        updateTimerDisplay();
+    }
 
     function engineGame(options) {
         options = options || {};
@@ -50,6 +116,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             if (game.game_over()) {
                 announced_game_over = true;
+                stopTimer();
                 $('#game-score').text("Game Over");
             }
         }, 1000);
@@ -127,6 +194,13 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("fenInput").value = game.fen();
             board.position(game.fen());
             
+            // Timer logic - start timer on first move by white
+            if (!gameStarted && game.turn() === 'b') {
+                // White just made their first move, start the timer
+                gameStarted = true;
+                startTimer();
+            }
+            
             // Calculate and log material score after each move
             calculateMaterialScore();
             
@@ -151,6 +225,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     isEngineRunning = true;
                 }
             }
+
+
         }
 
         evaler.onmessage = function(event) {
@@ -250,6 +326,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return {
             reset: function() {
                 game.reset();
+                resetTimers();
                 uciCmd('setoption name Contempt value 0');
                 this.setSkillLevel(0);
                 uciCmd('setoption name King Safety value 0');
@@ -330,6 +407,9 @@ document.addEventListener("DOMContentLoaded", function() {
             reloadWithFEN: function(fen) {
                 // Load the new FEN
                 game.load(fen);
+                
+                // Reset timers when loading new position
+                resetTimers();
                 
                 // Update the board display
                 board.position(game.fen());
@@ -472,5 +552,8 @@ document.addEventListener("DOMContentLoaded", function() {
         navigator.clipboard.writeText(fenText);
     });
 
+    // Initialize timer display
+    updateTimerDisplay();
+    
     gameInstance.start();
 });
