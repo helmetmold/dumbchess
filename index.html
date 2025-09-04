@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoldChess.com - Stockfish 16 Web GUI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./css/chessboard-1.0.0.min.css">
+    <script src="./js/jquery-3.7.1.min.js"></script>
+    <script src="./js/chessboard-1.0.0.min.js"></script>
+    <script src="./js/chess.min.js"></script>
+    <script>
+        function toggleAccordion(id) {
+            const element = document.getElementById(id);
+            const isVisible = !element.classList.contains('hidden');
+            
+            // Hide all accordion sections
+            document.querySelectorAll('.accordion-collapse').forEach(collapse => {
+                collapse.classList.add('hidden');
+            });
+            
+            // Show the clicked section if it was hidden
+            if (isVisible) {
+                element.classList.add('hidden');
+            } else {
+                element.classList.remove('hidden');
+            }
+        }
+
+        function changeDefaultFEN(newFEN) {
+            console.log("Changing default FEN to:", newFEN);
+            
+            // Store the original Chess constructor
+            const OriginalChess = window.Chess;
+            
+            // Create a new constructor that uses the custom FEN
+            window.Chess = function(fen) {
+                // If no FEN is provided, use our custom default
+                if (typeof fen === 'undefined') {
+                    return new OriginalChess(newFEN);
+                }
+                // Otherwise use the provided FEN
+                return new OriginalChess(fen);
+            };
+            
+            // Copy all properties from the original Chess constructor
+            Object.setPrototypeOf(window.Chess, OriginalChess);
+            Object.assign(window.Chess, OriginalChess);
+            
+            // Wait for gameInstance to be ready and reload it
+            waitForGameInstance(newFEN);
+        }
+
+        function changeRandomFen() {
+
+            let options = [
+            //'rrrrkrrr/rrrrrrrr/8/8/8/8/RRRRRRRR/RRRRKRRR w KQkq - 0 1', //all rooks
+            //'nnnnknnn/nnnnnnnn/8/8/8/8/NNNNNNNN/NNNNKNNN w KQkq - 0 1', //all knights
+            //'bbbbbbbb/bbbbbbbb/8/8/8/8/BBBBBBBB/BBBBBBBB w KQkq - 0 1', //all bishops
+            //'qqqqqkqq/qqqqqqqq/8/8/8/8/QQQQQQQQ/QQQQKQQQ w KQkq - 0 1', //all queens
+            //'rnbkbnrq/pppppppp/8/8/8/8/PPPPPPPP/RNBKBNRQ w KQkq - 0 1', //knights and bishops
+            //'rqbkrnq/pqppppp/8/8/8/8/PPPPPPPP/RNBQKRNQ w KQkq - 0 1', //all towers
+            //'rqbkrnp/pqppppp/8/8/8/8/PPPPPPPP/RNBQKRNQ w KQkq - 0 1', //kings, rooks and queens
+            //'rqbkrnp/pqppppp/8/8/8/8/PPPPPPPP/RNBQKRNQ w KQkq - 0 1', //kings, queens and knights
+            //'rqbkrnp/pqppppp/8/8/8/8/PPPPPPPP/RNBQKRNQ w KQkq - 0 1', //kings, queens and pawns
+            '2pppp2/2pkpp2/8/8/8/8/2PPPP2/2PKPP2 w KQkq - 0 1', 
+            'kpppppp1/pppppp2/ppppp1PP/pppp1PPP/ppp1PPPP/pp1PPPPP/2PPPPPP/1PPPPPPK w KQkq - 0 1'
+            ];
+
+            changeDefaultFEN(options[Math.floor(Math.random() * options.length)]);
+            
+        }
+        
+        function waitForGameInstance(newFEN) {
+            if (window.gameInstance && window.gameInstance.reloadWithFEN) {
+                // Reload the current game with the new FEN
+                window.gameInstance.reloadWithFEN(newFEN);
+                console.log("✅ Board reloaded with new FEN:", newFEN);
+            } else {
+                console.log("Waiting for game instance...");
+                setTimeout(() => waitForGameInstance(newFEN), 100);
+            }
+        }
+
+    </script>
+    <style>
+        #board {
+            max-width: 600px;
+            position: relative;
+        }
+        #score-bar-container {
+            position: absolute;
+            left: 75px;
+            top: 0;
+            width: 10px;
+            height: 100%;
+            background-color: #3b4252ff;
+        }
+        #score-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #d8dee9ff;
+        }
+        
+    </style>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <a href="/" class="block text-center">
+            <div class="w-20 h-20 mx-auto mb-3 bg-gray-800 rounded-full flex items-center justify-center">
+                <span class="text-white text-2xl font-bold">♔</span>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 pb-3">DumbChess</h1>
+        </a>
+    </div>
+</head>
+
+<body>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col lg:flex-row justify-center gap-8">
+            <div class="lg:w-2/3 flex flex-col items-center mb-4 relative">
+                
+                <div class="flex flex-row gap-2 w-full max-w-2xl px-10 mb-4 justify-between">
+                    <div class="flex flex-row gap-2 items-center">
+                        <div class="w-10 h-10 bg-gray-800 rounded-md"></div>
+                        <div id="name">Name</div>
+                    </div>
+                    <div class="my-auto bg-gray-200 rounded-md py-2 px-4">
+                        <div id="time" class="my-auto text-xl">00:00</div>
+                    </div>
+                </div>
+                
+                <div id="board" class="w-full max-w-2xl"></div>
+                <div class="flex flex-row gap-2 w-full max-w-2xl px-10 my-4 justify-between">
+                    <div class="flex flex-row gap-2 items-center">
+                        <div class="w-10 h-10 bg-gray-800 rounded-md"></div>
+                        <div id="name">Name</div>
+                    </div>
+                    <div class="my-auto bg-gray-200 rounded-md py-2 px-4">
+                        <div id="time" class="my-auto text-xl">00:00</div>
+                    </div>
+                </div>
+                <div class="w-full max-w-2xl bg-gray-100 p-2 rounded" id="game-result"><span id="game-score"></span></div>
+                
+            </div>
+            <div class="lg:w-1/3 max-w-md">
+                <div class="space-y-4 my-4" id="accordionOptions">
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="w-full px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 border-b border-gray-200 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="button" onclick="toggleAccordion('collapseOne')">Settings</button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse show" aria-labelledby="headingOne">
+                            <div class="p-4">
+                                <div class="mb-4">
+                                    <label for="gameMode" class="block text-sm font-medium text-gray-700 mb-2">Game Mode</label>
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" id="gameMode">
+                                        <option value="Player vs Engine" selected>Player vs Engine</option>
+                                        <option value="Player vs Player">Player vs Player</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="skillLevel" class="block text-sm font-medium text-gray-700 mb-2">Computer Skill Level (0-20)</label>
+                                    <input type="number" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" id="skillLevel" value="20" min="0" max="20">
+                                </div>
+                                <div class="mb-4">
+                                    <label for="depthLevel" class="block text-sm font-medium text-gray-700 mb-2">Search Depth (1-30)</label>
+                                    <input type="number" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" id="depthLevel" value="20" min="1" max="30">
+                                </div>
+                                <div class="mb-4">
+                                    <label for="thinkingTime" class="block text-sm font-medium text-gray-700 mb-2">Thinking Time (1-30 seconds)</label>
+                                    <input type="number" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" id="thinkingTime" value="1" min="1" max="30">
+                                </div>
+                                
+                                <div class="flex items-center mb-2">
+                                    <input class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" type="radio" name="timeDepthToggle" id="depthToggle" checked>
+                                    <label class="ml-2 block text-sm text-gray-900" for="depthToggle">
+                                        Use Depth
+                                    </label>
+                                </div>
+                                <div class="flex items-center mb-4">
+                                    <input class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" type="radio" name="timeDepthToggle" id="timeToggle">
+                                    <label class="ml-2 block text-sm text-gray-900" for="timeToggle">
+                                        Use Thinking Time
+                                    </label>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="promote" class="block text-sm font-medium text-gray-700 mb-2">Promote Pawns To</label>
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" id="promote">
+                                        <option value="q" selected>Queen</option>
+                                        <option value="r">Rook</option>
+                                        <option value="b">Bishop</option>
+                                        <option value="n">Knight</option>
+                                    </select>
+                                </div>
+                                <div class="flex mb-4" role="group" aria-label="Color selection">
+                                    <input type="radio" class="sr-only" name="color" id="color-white" autocomplete="off" checked>
+                                    <label class="flex-1 px-3 py-2 text-sm font-medium text-center border border-gray-300 rounded-l-md cursor-pointer hover:bg-gray-50 focus:z-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" for="color-white">Play as White</label>
+                                    <input type="radio" class="sr-only" name="color" id="color-black" autocomplete="off">
+                                    <label class="flex-1 px-3 py-2 text-sm font-medium text-center border border-l-0 border-gray-300 rounded-r-md cursor-pointer hover:bg-gray-50 focus:z-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" for="color-black">Play as Black</label>
+                                </div>
+                                <button type="button" class="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition-colors" id="newGameBtn">Start New Game</button>
+                                
+                                <!-- Custom Game Variants -->
+                                <div class="mt-6 pt-4 border-t border-gray-200">
+                                    <h4 class="text-lg font-medium text-gray-900 mb-3">Custom Game Variants</h4>
+                                    
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Quick Variants</label>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <button type="button" class="bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium py-2 px-3 rounded transition-colors" onclick="changeRandomFen()">Random FEN</button>
+                                            <button type="button" class="bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium py-2 px-3 rounded transition-colors" onclick="loadVariant('allQueens')">All Queens</button>
+                                            <button type="button" class="bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium py-2 px-3 rounded transition-colors" onclick="loadVariant('allKnights')">All Knights</button>
+                                            <button type="button" class="bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium py-2 px-3 rounded transition-colors" onclick="loadVariant('allBishops')">All Bishops</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <label for="customFEN" class="block text-sm font-medium text-gray-700 mb-2">Custom FEN Position</label>
+                                        <textarea class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" id="customFEN" rows="2" placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"></textarea>
+                                        <button type="button" class="mt-2 bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-md transition-colors" onclick="loadCustomFEN()">Load Custom Position</button>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Piece Replacement</label>
+                                        <div class="grid grid-cols-2 gap-2 mb-2">
+                                            <select class="px-2 py-1 border border-gray-300 rounded text-sm" id="replaceFrom">
+                                                <option value="P">Pawn</option>
+                                                <option value="R">Rook</option>
+                                                <option value="N">Knight</option>
+                                                <option value="B">Bishop</option>
+                                                <option value="Q">Queen</option>
+                                                <option value="K">King</option>
+                                            </select>
+                                            <select class="px-2 py-1 border border-gray-300 rounded text-sm" id="replaceTo">
+                                                <option value="R">Rook</option>
+                                                <option value="P">Pawn</option>
+                                                <option value="N">Knight</option>
+                                                <option value="B">Bishop</option>
+                                                <option value="Q">Queen</option>
+                                                <option value="K">King</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors" onclick="replacePieces()">Replace Pieces</button>
+                                    </div>
+                                    
+                                    <button type="button" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition-colors" onclick="resetToStandard()">Reset to Standard</button>
+                                    
+                                    <!-- Advanced Custom Board Builder -->
+                                    <div class="mt-6 pt-4 border-t border-gray-200">
+                                        <h4 class="text-lg font-medium text-gray-900 mb-3">Advanced Board Builder</h4>
+                                        
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Custom Board Layout</label>
+                                            <div class="grid grid-cols-8 gap-1 mb-2" id="customBoard">
+                                                <!-- 8x8 grid will be generated by JavaScript -->
+                                            </div>
+                                            <div class="flex gap-2 mb-2">
+                                                <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded" onclick="setPieceType('K')">King</button>
+                                                <button type="button" class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded" onclick="setPieceType('Q')">Queen</button>
+                                                <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded" onclick="setPieceType('R')">Rook</button>
+                                                <button type="button" class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded" onclick="setPieceType('N')">Knight</button>
+                                                <button type="button" class="bg-purple-500 hover:bg-purple-600 text-white text-xs px-2 py-1 rounded" onclick="setPieceType('B')">Bishop</button>
+                                                <button type="button" class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded" onclick="setPieceType('P')">Pawn</button>
+                                                <button type="button" class="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 rounded" onclick="setPieceType('')">Empty</button>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button type="button" class="bg-white hover:bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded border" onclick="setColor('white')">White</button>
+                                                <button type="button" class="bg-black hover:bg-gray-800 text-white text-xs px-2 py-1 rounded" onclick="setColor('black')">Black</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="button" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-2 px-4 rounded-md transition-colors" onclick="loadCustomBoard()">Load Custom Board</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="w-full px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 border-b border-gray-200 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="button" onclick="toggleAccordion('collapseThree')">Moves</button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse hidden" aria-labelledby="headingThree">
+                            <div class="p-4">
+                                <h4 class="text-lg font-medium text-gray-900 mb-2">List Of Moves:</h4>
+                                <div id="pgn" class="text-sm text-gray-700"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <h2 class="accordion-header" id="headingFour">
+                            <button class="w-full px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 border-b border-gray-200 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="button" onclick="toggleAccordion('collapseFour')">Classical Evaluation</button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse hidden" aria-labelledby="headingFour">
+                            <div class="p-4">
+                                <h4 class="text-lg font-medium text-gray-900 mb-2">Evaluation:</h4>
+                                <pre id="evaluation" class="text-sm text-gray-700 bg-gray-50 p-2 rounded"></pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <h2 class="accordion-header" id="headingFive">
+                            <button class="w-full px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 border-b border-gray-200 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="button" onclick="toggleAccordion('collapseFive')">Engine Analysis</button>
+                        </h2>
+                        <div id="collapseFive" class="accordion-collapse hidden" aria-labelledby="headingFive">
+                            <div class="p-4">
+                                <div id="engineAnalysis" class="text-center text-sm text-gray-700"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <h2 class="accordion-header" id="headingSix">
+                            <button class="w-full px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 border-b border-gray-200 rounded-t-lg focus:outline-none focus:ring-2 focus:ring-blue-500" type="button" onclick="toggleAccordion('collapseSix')">PGN & FEN</button>
+                        </h2>
+                        <div id="collapseSix" class="accordion-collapse hidden" aria-labelledby="headingSix">
+                            <div class="p-4">
+                                <div class="mb-4">
+                                    <label for="pgnInput" class="block text-sm font-medium text-gray-700 mb-2">PGN</label>
+                                    <textarea class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" id="pgnInput" rows="3"></textarea>
+                                    <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors" id="copyPgnBtn">Copy PGN</button>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="fenInput" class="block text-sm font-medium text-gray-700 mb-2">FEN</label>
+                                    <textarea class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" id="fenInput" rows="2"></textarea>
+                                    <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors" id="copyFenBtn">Copy FEN</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white text-center py-3 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="mb-1">This project is licensed under the <a href="https://www.gnu.org/licenses/agpl-3.0.html" class="text-white underline" target="_blank">AGPLv3 License</a></p>
+            <p class="mb-0">Visit <a href="https://boldchess.com" class="text-white underline" target="_blank">BoldChess.com</a> for more information</p>
+        </div>
+    </footer>
+    <script src="index.js"></script>
+</body>
+
+</html>
