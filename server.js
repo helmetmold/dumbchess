@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const RandomFens = require('./RandomFens');
 
 const app = express();
 const server = http.createServer(app);
@@ -34,7 +35,7 @@ class GameRoom {
       timeLeft: 600 // 10 minutes in seconds
     });
     this.gameState = {
-      fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      fen: RandomFens.getWeightedRandomFen(),
       pgn: '',
       turn: 'w',
       gameOver: false,
@@ -173,7 +174,8 @@ io.on('connection', (socket) => {
         socket.emit('joined_game', {
           gameId: newGameId,
           playerId: socket.id,
-          playerColor: 'white',
+          playerColor: game.getPlayer(socket.id).color,
+          gameState: game.gameState,
           players: Array.from(game.players.values())
         });
       }
@@ -193,7 +195,8 @@ io.on('connection', (socket) => {
     socket.emit('joined_game', {
       gameId: gameId,
       playerId: socket.id,
-      playerColor: 'white',
+      playerColor: game.getPlayer(socket.id).color,
+      gameState: game.gameState,
       players: Array.from(game.players.values())
     });
   });

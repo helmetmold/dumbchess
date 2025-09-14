@@ -48,6 +48,14 @@ class SimpleChessGame {
             this.playerId = data.playerId;
             this.playerColor = data.playerColor;
             this.updatePlayerInfo(data.players);
+            
+            // Load the random starting position if provided
+            if (data.gameState && data.gameState.fen) {
+                console.log('Loading random starting position:', data.gameState.fen);
+                this.game.load(data.gameState.fen);
+                this.board.position(data.gameState.fen);
+            }
+            
             // Set board orientation after a short delay to ensure board is ready
             setTimeout(() => {
                 this.setBoardOrientation();
@@ -342,9 +350,16 @@ class SimpleChessGame {
     }
 
     updateGameState(data) {
+        console.log('Received game state update:', data);
+        console.log('Current game FEN:', this.game.fen());
+        console.log('New FEN:', data.fen);
+        
         if (data.fen !== this.game.fen()) {
+            console.log('Updating game state with new FEN');
             this.game.load(data.fen);
             this.board.position(data.fen);
+        } else {
+            console.log('FEN is the same, no update needed');
         }
 
         if (data.gameOver) {
