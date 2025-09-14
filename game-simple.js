@@ -48,13 +48,22 @@ class SimpleChessGame {
             this.playerId = data.playerId;
             this.playerColor = data.playerColor;
             this.updatePlayerInfo(data.players);
+            // Set board orientation after a short delay to ensure board is ready
+            setTimeout(() => {
+                this.setBoardOrientation();
+            }, 100);
             this.hideConnectionDialog();
             this.updateGameStatus('Waiting for opponent to join...');
         });
 
         this.socket.on('player_joined', (data) => {
             this.updatePlayerInfo(data.players);
-            this.updateGameStatus('Both players connected! Click Ready to start.');
+            if (data.players.length === 2) {
+                this.updateGameStatus('Both players connected! Game will start when white makes the first move.');
+                document.getElementById('resignBtn').disabled = false;
+            } else {
+                this.updateGameStatus('Waiting for opponent to join...');
+            }
         });
 
         this.socket.on('player_ready', (data) => {
@@ -241,13 +250,14 @@ class SimpleChessGame {
     }
 
     onDragStart(source, piece, position, orientation) {
-        if (!this.gameStarted || this.game.game_over()) {
+        if (this.game.game_over()) {
             return false;
         }
 
-        // Check if it's the player's turn
+        // Check if it's the player's turn (or if game hasn't started yet, allow white to start)
         const isPlayerTurn = (this.playerColor === 'white' && this.game.turn() === 'w') ||
-                            (this.playerColor === 'black' && this.game.turn() === 'b');
+                            (this.playerColor === 'black' && this.game.turn() === 'b') ||
+                            (!this.gameStarted && this.playerColor === 'white' && this.game.turn() === 'w');
         
         if (!isPlayerTurn) {
             return false;
@@ -261,7 +271,8 @@ class SimpleChessGame {
     }
 
     onDrop(source, target) {
-        if (!this.gameStarted) return 'snapback';
+        // Allow moves even if game hasn't started yet (for first move)
+        if (this.game.game_over()) return 'snapback';
 
         const move = this.game.move({
             from: source,
@@ -270,6 +281,15 @@ class SimpleChessGame {
         });
 
         if (move === null) return 'snapback';
+
+        // Start the game on first move if not already started
+        if (!this.gameStarted) {
+            this.gameStarted = true;
+            this.startTimer();
+            this.updateGameStatus('Game started! Good luck!');
+            document.getElementById('readyBtn').disabled = true;
+            document.getElementById('readyBtn').textContent = 'Game Started!';
+        }
 
         // Send move to server
         if (this.gameId) {
@@ -341,6 +361,29 @@ class SimpleChessGame {
         }
     }
 
+    setBoardOrientation() {
+        if (this.board && this.playerColor) {
+            // Set board orientation so the player's pieces are at the bottom
+            // For white players: use 'white' orientation (white pieces at bottom)
+            // For black players: use 'black' orientation (black pieces at bottom)
+            console.log('Setting board orientation for player color:', this.playerColor);
+            console.log('Current board orientation before change:', this.board.orientation());
+            
+            // Try to set orientation - chessboard.js uses 'white' and 'black' as orientation values
+            try {
+                this.board.orientation(this.playerColor);
+                console.log('Board orientation after change:', this.board.orientation());
+            } catch (error) {
+                console.error('Error setting board orientation:', error);
+                // Fallback: try to flip the board if setting orientation fails
+                if (this.playerColor === 'black') {
+                    this.board.flip();
+                    console.log('Used flip() method for black player');
+                }
+            }
+        }
+    }
+
     updatePlayerInfo(players) {
         if (players.length >= 1) {
             const player1 = players[0];
@@ -367,14 +410,6 @@ class SimpleChessGame {
             } else {
                 document.getElementById('blackPlayerName').textContent = player2.name;
                 document.getElementById('blackProfilePic').textContent = player2.name.charAt(0).toUpperCase();
-            }
-        }
-
-        // Enable ready button when both players are connected
-        if (players.length === 2) {
-            const currentPlayer = players.find(p => p.id === this.playerId);
-            if (currentPlayer && !currentPlayer.ready) {
-                document.getElementById('readyBtn').disabled = false;
             }
         }
 

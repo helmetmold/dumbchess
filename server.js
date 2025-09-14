@@ -25,11 +25,12 @@ class GameRoom {
   constructor(id, creatorId, creatorName) {
     this.id = id;
     this.players = new Map();
+    // Randomly assign first player's color
+    const firstPlayerColor = Math.random() < 0.5 ? 'white' : 'black';
     this.players.set(creatorId, {
       id: creatorId,
       name: creatorName,
-      color: 'white',
-      ready: false,
+      color: firstPlayerColor,
       timeLeft: 600 // 10 minutes in seconds
     });
     this.gameState = {
@@ -50,12 +51,13 @@ class GameRoom {
       return false;
     }
 
-    const color = this.players.size === 0 ? 'white' : 'black';
+    // Get the opposite color of the first player
+    const firstPlayer = Array.from(this.players.values())[0];
+    const color = firstPlayer.color === 'white' ? 'black' : 'white';
     this.players.set(playerId, {
       id: playerId,
       name: playerName,
       color: color,
-      ready: false,
       timeLeft: 600
     });
     return true;
@@ -78,9 +80,7 @@ class GameRoom {
     return null;
   }
 
-  isReadyToStart() {
-    return this.players.size === 2 && Array.from(this.players.values()).every(p => p.ready);
-  }
+  // isReadyToStart method removed - game starts automatically on first move
 
   updateGameState(newFen, newPgn, turn, gameOver = false, winner = null) {
     this.gameState.fen = newFen;
@@ -135,7 +135,7 @@ io.on('connection', (socket) => {
       // Try to find an existing game with only one player
       let joinedGame = false;
       for (let [id, game] of games) {
-        if (game.players.size === 1 && !game.isReadyToStart()) {
+        if (game.players.size === 1) {
           const success = game.addPlayer(socket.id, playerName);
           if (success) {
             socket.join(id);
@@ -198,30 +198,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Handle player ready status
-  socket.on('player_ready', (data) => {
-    const { gameId } = data;
-    const game = games.get(gameId);
-    
-    if (game) {
-      const player = game.getPlayer(socket.id);
-      if (player) {
-        player.ready = true;
-        
-        socket.to(gameId).emit('player_ready', {
-          playerId: socket.id,
-          players: Array.from(game.players.values())
-        });
-        
-        if (game.isReadyToStart()) {
-          io.to(gameId).emit('game_start', {
-            gameState: game.gameState,
-            players: Array.from(game.players.values())
-          });
-        }
-      }
-    }
-  });
+  // Handle player ready status (removed - game starts automatically on first move)
 
   // Handle moves
   socket.on('make_move', (data) => {
