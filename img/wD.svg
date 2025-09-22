@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- White Dragon -->
+  <rect width="60" height="60" fill="#f8f8f8" stroke="#333" stroke-width="1" rx="5"/>
+  <text x="30" y="40" font-family="Arial, sans-serif" font-size="32" text-anchor="middle" fill="#d97706">🐉</text>
+  <text x="30" y="52" font-family="Arial, sans-serif" font-size="8" text-anchor="middle" fill="#666">DRAGON</text>
+</svg>
+

@@ -100,9 +100,6 @@
                     <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
                         Find Random Game
                     </button>
-                    <button id="createGameBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
-                        Create New Game
-                    </button>
                 </div>
                 
                 <div class="mt-4 pt-4 border-t border-gray-200">
@@ -155,7 +152,34 @@
                 </div>
                 
                 <!-- Chess Board -->
-                <div id="board" class="w-full max-w-2xl mb-4"></div>
+                <div class="relative w-full max-w-2xl mb-4">
+                    <div id="board" class="w-full"></div>
+                    <!-- Board Cover -->
+                    <div id="boardCover" class="absolute inset-0 bg-gray-900 flex items-center justify-center rounded-lg">
+                        <div class="text-center">
+                            <h2 class="text-white text-6xl md:text-8xl font-bold tracking-wider mb-4">
+                                DUMB CHESS
+                            </h2>
+                            <div class="text-white text-xl opacity-75">
+                                Waiting for game to begin...
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Game Over Screen -->
+                    <div id="gameOverScreen" class="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center rounded-lg z-50 hidden">
+                        <div class="text-center">
+                            <div id="gameOverTitle" class="text-white text-4xl md:text-6xl font-bold tracking-wider mb-6">
+                                YOU WIN
+                            </div>
+                            <div id="gameOverSubtext" class="text-white text-xl md:text-2xl mb-8 opacity-75">
+                                <!-- Push-ups message will appear here for losses -->
+                            </div>
+                            <button id="newGameBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg py-3 px-8 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200 ease-in-out">
+                                New Game
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- White Player (Bottom) -->
                 <div class="flex flex-row gap-4 w-full max-w-2xl items-center justify-between">
@@ -174,6 +198,13 @@
                 <!-- Game Status -->
                 <div class="w-full max-w-2xl bg-white p-4 rounded-lg shadow-sm mt-4">
                     <div id="game-status" class="text-center text-gray-600">Connecting...</div>
+                    <div id="game-id-display" class="text-center text-sm text-gray-500 mt-2 hidden">
+                        <span>Game ID: </span>
+                        <span id="game-id-value" class="font-mono font-bold"></span>
+                        <button id="copy-game-id" class="ml-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                            Copy
+                        </button>
+                    </div>
                 </div>
             </div>
             
