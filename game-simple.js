@@ -26,6 +26,7 @@ class SimpleChessGame {
         this.initializeGame();
         this.setupEventListeners();
         this.updateTimerDisplay();
+        this.checkURLParameters();
     }
 
     initializeSocket() {
@@ -44,9 +45,12 @@ class SimpleChessGame {
         });
 
         this.socket.on('joined_game', (data) => {
+            console.log('joined_game event received:', data);
             this.gameId = data.gameId;
             this.playerId = data.playerId;
             this.playerColor = data.playerColor;
+            console.log('Game info set:', { gameId: this.gameId, playerId: this.playerId, playerColor: this.playerColor, playerName: this.playerName });
+            
             this.updatePlayerInfo(data.players);
             
             // Load the random starting position if provided
@@ -60,17 +64,18 @@ class SimpleChessGame {
             setTimeout(() => {
                 this.setBoardOrientation();
             }, 100);
-            this.hideConnectionDialog();
-            this.updateGameStatus('Waiting for opponent to join...');
+            
+            // Show player color and name clearly
+            this.updateGameStatus(`Playing as ${this.playerColor.toUpperCase()}. Waiting for opponent to join...`);
         });
 
         this.socket.on('player_joined', (data) => {
             this.updatePlayerInfo(data.players);
             if (data.players.length === 2) {
-                this.updateGameStatus('Both players connected! Game will start when white makes the first move.');
+                this.updateGameStatus(`Both players connected! ${this.playerColor === 'white' ? 'You go first!' : 'White goes first - wait for your turn.'}`);
                 document.getElementById('resignBtn').disabled = false;
             } else {
-                this.updateGameStatus('Waiting for opponent to join...');
+                this.updateGameStatus(`Playing as ${this.playerColor.toUpperCase()}. Waiting for opponent to join...`);
             }
         });
 
@@ -83,7 +88,7 @@ class SimpleChessGame {
             this.gameStarted = true;
             this.updatePlayerInfo(data.players);
             this.startTimer();
-            this.updateGameStatus('Game started! Good luck!');
+            this.updateGameStatus(`Game started! Playing as ${this.playerColor.toUpperCase()}. ${this.playerColor === 'white' ? 'You go first!' : 'White goes first - wait for your turn.'}`);
             document.getElementById('readyBtn').disabled = true;
             document.getElementById('readyBtn').textContent = 'Ready!';
             document.getElementById('resignBtn').disabled = false;
@@ -149,19 +154,6 @@ class SimpleChessGame {
     }
 
     setupEventListeners() {
-        // Connection dialog events
-        document.getElementById('connectBtn').addEventListener('click', () => {
-            this.connectToRandomGame();
-        });
-
-        document.getElementById('createGameBtn').addEventListener('click', () => {
-            this.createNewGame();
-        });
-
-        document.getElementById('joinGameBtn').addEventListener('click', () => {
-            this.joinExistingGame();
-        });
-
         // Game control events
         document.getElementById('readyBtn').addEventListener('click', () => {
             this.markReady();
@@ -183,45 +175,6 @@ class SimpleChessGame {
         });
     }
 
-    connectToRandomGame() {
-        const playerName = document.getElementById('playerName').value.trim();
-        if (!playerName) {
-            alert('Please enter your name');
-            return;
-        }
-
-        this.playerName = playerName;
-        this.socket.emit('join', { playerName: playerName });
-    }
-
-    createNewGame() {
-        const playerName = document.getElementById('playerName').value.trim();
-        if (!playerName) {
-            alert('Please enter your name');
-            return;
-        }
-
-        this.playerName = playerName;
-        this.socket.emit('create_game', { playerName: playerName });
-    }
-
-    joinExistingGame() {
-        const playerName = document.getElementById('playerName').value.trim();
-        const gameId = document.getElementById('gameId').value.trim();
-        
-        if (!playerName) {
-            alert('Please enter your name');
-            return;
-        }
-        
-        if (!gameId) {
-            alert('Please enter a game ID');
-            return;
-        }
-
-        this.playerName = playerName;
-        this.socket.emit('join', { playerName: playerName, gameId: gameId });
-    }
 
     markReady() {
         if (this.gameId) {
@@ -378,55 +331,40 @@ class SimpleChessGame {
 
     setBoardOrientation() {
         if (this.board && this.playerColor) {
-            // Set board orientation so the player's pieces are at the bottom
-            // For white players: use 'white' orientation (white pieces at bottom)
-            // For black players: use 'black' orientation (black pieces at bottom)
+            // Show the board from the player's perspective (bottom view)
+            // This means the player's pieces are always at the bottom
             console.log('Setting board orientation for player color:', this.playerColor);
             console.log('Current board orientation before change:', this.board.orientation());
             
-            // Try to set orientation - chessboard.js uses 'white' and 'black' as orientation values
+            // Set orientation so player sees their pieces at the bottom
+            // For white players: use 'white' orientation (white pieces at bottom)
+            // For black players: use 'black' orientation (black pieces at bottom)
             try {
                 this.board.orientation(this.playerColor);
-                console.log('Board orientation after change:', this.board.orientation());
+                console.log('Board orientation set to', this.playerColor, '(player perspective)');
             } catch (error) {
                 console.error('Error setting board orientation:', error);
-                // Fallback: try to flip the board if setting orientation fails
-                if (this.playerColor === 'black') {
-                    this.board.flip();
-                    console.log('Used flip() method for black player');
-                }
             }
         }
     }
 
     updatePlayerInfo(players) {
-        if (players.length >= 1) {
-            const player1 = players[0];
-            if (player1.color === 'white') {
-                document.getElementById('whitePlayerName').textContent = player1.name;
-                document.getElementById('whiteProfilePic').textContent = player1.name.charAt(0).toUpperCase();
-                if (player1.id === this.playerId) {
-                    this.opponentName = players.length > 1 ? players[1].name : 'Waiting...';
-                }
-            } else {
-                document.getElementById('blackPlayerName').textContent = player1.name;
-                document.getElementById('blackProfilePic').textContent = player1.name.charAt(0).toUpperCase();
-                if (player1.id === this.playerId) {
-                    this.opponentName = players.length > 1 ? players[1].name : 'Waiting...';
-                }
-            }
-        }
+        // Clear existing names first
+        document.getElementById('whitePlayerName').textContent = 'Waiting...';
+        document.getElementById('blackPlayerName').textContent = 'Waiting...';
+        document.getElementById('whiteProfilePic').textContent = '?';
+        document.getElementById('blackProfilePic').textContent = '?';
 
-        if (players.length >= 2) {
-            const player2 = players[1];
-            if (player2.color === 'white') {
-                document.getElementById('whitePlayerName').textContent = player2.name;
-                document.getElementById('whiteProfilePic').textContent = player2.name.charAt(0).toUpperCase();
+        // Update player names based on their colors
+        players.forEach(player => {
+            if (player.color === 'white') {
+                document.getElementById('whitePlayerName').textContent = player.name;
+                document.getElementById('whiteProfilePic').textContent = player.name.charAt(0).toUpperCase();
             } else {
-                document.getElementById('blackPlayerName').textContent = player2.name;
-                document.getElementById('blackProfilePic').textContent = player2.name.charAt(0).toUpperCase();
+                document.getElementById('blackPlayerName').textContent = player.name;
+                document.getElementById('blackProfilePic').textContent = player.name.charAt(0).toUpperCase();
             }
-        }
+        });
 
         // Enable chat when connected to a game
         if (players.length > 0) {
@@ -530,25 +468,77 @@ class SimpleChessGame {
 
     updateConnectionStatus() {
         const statusEl = document.getElementById('connectionStatus');
-        if (this.isConnected) {
-            statusEl.innerHTML = `
-                <div class="flex items-center justify-center text-green-600">
-                    <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                    Connected
-                </div>
-            `;
+        if (statusEl) {
+            if (this.isConnected) {
+                statusEl.innerHTML = `
+                    <div class="flex items-center justify-center text-green-600">
+                        <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                        Connected
+                    </div>
+                `;
+            } else {
+                statusEl.innerHTML = `
+                    <div class="flex items-center justify-center text-red-600">
+                        <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                        Disconnected
+                    </div>
+                `;
+            }
         } else {
-            statusEl.innerHTML = `
-                <div class="flex items-center justify-center text-red-600">
-                    <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                    Disconnected
-                </div>
-            `;
+            console.log('Connection status:', this.isConnected ? 'Connected' : 'Disconnected');
         }
     }
 
-    hideConnectionDialog() {
-        document.getElementById('connectionDialog').classList.add('hidden');
+
+    checkURLParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        const name = urlParams.get('name');
+        const gameId = urlParams.get('gameId');
+        
+        console.log('URL Parameters:', { action, name, gameId });
+        
+        if (action && name) {
+            // Set the player name
+            this.playerName = name;
+            console.log('Player name set to:', this.playerName);
+            
+            // Show connecting status
+            this.updateGameStatus('Connecting to game...');
+            
+            // Wait for socket connection before attempting to join
+            if (this.isConnected) {
+                console.log('Already connected, joining game...');
+                this.handleAutoConnect(action, name, gameId);
+            } else {
+                console.log('Waiting for connection...');
+                // Wait for connection
+                this.socket.on('connect', () => {
+                    console.log('Connected, now joining game...');
+                    this.handleAutoConnect(action, name, gameId);
+                });
+            }
+        } else {
+            console.log('No valid parameters, redirecting to home page');
+            // If no parameters, redirect to home page
+            window.location.href = 'index.html';
+        }
+    }
+
+    handleAutoConnect(action, name, gameId) {
+        console.log('handleAutoConnect called with:', { action, name, gameId });
+        
+        if (action === 'random') {
+            console.log('Joining random game with name:', name);
+            // Automatically connect to a random game
+            this.socket.emit('join', { playerName: name });
+        } else if (action === 'join' && gameId) {
+            console.log('Joining specific game:', gameId, 'with name:', name);
+            // Join specific game with ID
+            this.socket.emit('join', { playerName: name, gameId: gameId });
+        } else {
+            console.error('Invalid action or missing gameId:', { action, gameId });
+        }
     }
 
     addChatMessage(data) {
