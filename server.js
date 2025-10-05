@@ -34,8 +34,11 @@ class GameRoom {
       color: firstPlayerColor,
       timeLeft: 600 // 10 minutes in seconds
     });
+    const randomFen = RandomFens.getWeightedRandomFen();
+    console.log('🎲 Server generated FEN:', randomFen);
+    
     this.gameState = {
-      fen: RandomFens.getWeightedRandomFen(),
+      fen: randomFen,
       pgn: '',
       turn: 'w',
       gameOver: false,

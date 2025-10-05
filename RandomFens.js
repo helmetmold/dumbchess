@@ -141,6 +141,8 @@ const RandomFens = {
     // Get a random FEN from a specific category
     getRandomFen: function(category = 'all') {
         let fens = [];
+
+        console.log('Getting random FEN from category:', category);
         
         if (category === 'all') {
             fens = [
@@ -166,24 +168,28 @@ const RandomFens = {
     // Get a random FEN with weighted probability (more likely to get fun positions)
     getWeightedRandomFen: function() {
         const weights = {
-            allKnights: 0.2,       // 20% chance
-            allQueens: 0.2,        // 20% chance
-            allBishops: 0.15,      // 15% chance
-            allRooks: 0.15,        // 15% chance
-            allGrasshoppers: 0.15, // 15% chance - NEW!
-            allArchbishops: 0.1,   // 10% chance - NEW!
-            crazyMixed: 0.05       // 5% chance
+            //allKnights: 0.2,       // 20% chance
+            //allQueens: 0.2,        // 20% chance
+            //allBishops: 0.15,      // 15% chance
+            //allRooks: 0.15,        // 15% chance
+            allGrasshoppers: 0.5, // 15% chance - NEW!
+            allArchbishops: 0.5,   // 10% chance - NEW!
+            //crazyMixed: 0.05       // 5% chance
         };
         
         const random = Math.random();
+        console.log('🎲 Random number generated:', random);
         let cumulative = 0;
         
         for (const [category, weight] of Object.entries(weights)) {
             cumulative += weight;
+            console.log(`📊 Category: ${category}, Weight: ${weight}, Cumulative: ${cumulative}, Random: ${random}, Selected: ${random <= cumulative}`);
             if (random <= cumulative) {
+                console.log('✅ Getting random FEN from category:', category);
                 return this.ensureWhiteToMove(this.getRandomFen(category));
             }
         }
+        
         
         // Fallback to all knights if something goes wrong
         return this.ensureWhiteToMove(this.getRandomFen('allKnights'));

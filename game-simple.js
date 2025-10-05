@@ -55,9 +55,9 @@ class SimpleChessGame {
             
             // Load the random starting position if provided
             if (data.gameState && data.gameState.fen) {
-                console.log('Loading random starting position:', data.gameState.fen);
                 this.game.load(data.gameState.fen);
-                this.board.position(data.gameState.fen);
+                this.board.position(this.game.chessFen());
+                this.applyCustomPieceSkins();
             }
             
             // Set board orientation after a short delay to ensure board is ready
@@ -144,7 +144,7 @@ class SimpleChessGame {
         const config = {
             showErrors: true,
             draggable: true,
-            position: 'start',
+            position: 'empty', // Start with empty board, will be filled with server FEN
             pieceTheme: this.getCustomPieceTheme(),
             onDragStart: this.onDragStart.bind(this),
             onDrop: this.onDrop.bind(this),
@@ -153,26 +153,80 @@ class SimpleChessGame {
         };
 
         this.board = new ChessBoard('board', config);
+        this.applyCustomPieceSkins();
     }
     
     // Add this method to create piece theme function
     getCustomPieceTheme() {
         return (piece) => {
-            // Check if it's a custom piece
+            // Render custom symbols directly (wG/bG, wA/bA)
             if (window.CUSTOM_PIECES) {
-                const customPiece = CUSTOM_PIECES.find(p => 
-                    piece === `w${p.symbol}` || piece === `b${p.symbol}`
-                );
-                
-                if (customPiece) {
+                const cp = CUSTOM_PIECES.find(p => piece === `w${p.symbol}` || piece === `b${p.symbol}`);
+                if (cp) {
                     const color = piece.charAt(0) === 'w' ? 'white' : 'black';
-                    return customPiece.images[color];
+                    return cp.images[color];
                 }
             }
-            
-            // Use existing piece images from img folder
+            // Map fallback codes at squares that contain custom pieces
+            if (this && this.game && this.game.customPiecePositions) {
+                const squares = document.querySelectorAll('#board .piece-417db');
+                for (const img of squares) {
+                    const dataPiece = img.getAttribute('data-piece');
+                    if (dataPiece === piece) {
+                        const square = img.closest('[data-square]')?.getAttribute('data-square');
+                        if (square) {
+                            const info = this.game.customPiecePositions.get(square);
+                            if (info) {
+                                const def = (window.CUSTOM_PIECES || []).find(p => p.symbol === info.symbol);
+                                if (def) {
+                                    const color = info.color === 'w' ? 'white' : 'black';
+                                    return def.images[color];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             return `img/${piece}.svg`;
         };
+    }
+
+    // Replace fallback images (e.g., queens) with custom images on squares that hold custom pieces
+    applyCustomPieceSkins() {
+        if (!this.board || !this.game || !this.game.customPiecePositions) return;
+        const customPositions = this.game.customPiecePositions;
+        customPositions.forEach((info, square) => {
+            const img = document.querySelector(`#board .square-${square} img`);
+            if (!img) return;
+            const def = (window.CUSTOM_PIECES || []).find(p => p.symbol === info.symbol);
+            if (!def || !def.images) return;
+            const color = info.color === 'w' ? 'white' : 'black';
+            const url = def.images[color];
+            if (img.getAttribute('src') !== url) {
+                img.setAttribute('src', url);
+                img.setAttribute('data-piece', `${info.color}${info.symbol}`);
+            }
+        });
+    }
+
+    // Build a per-square position object so chessboard.js can render custom pieces reliably
+    buildBoardPosition() {
+        const position = {};
+        for (let rank = 1; rank <= 8; rank++) {
+            for (let file = 'a'.charCodeAt(0); file <= 'h'.charCodeAt(0); file++) {
+                const square = String.fromCharCode(file) + rank;
+                const piece = this.game.get(square);
+                if (!piece) continue;
+                const colorPrefix = piece.color === 'w' ? 'w' : 'b';
+                const customInfo = this.game.customPiecePositions && this.game.customPiecePositions.get(square);
+                if (customInfo) {
+                    position[square] = `${colorPrefix}${customInfo.symbol}`;
+                } else {
+                    position[square] = `${colorPrefix}${piece.type.toUpperCase()}`;
+                }
+            }
+        }
+        return position;
     }
 
     setupEventListeners() {
@@ -314,11 +368,14 @@ class SimpleChessGame {
             this.updateLocalTimer();
         }
 
+        this.board.position(this.game.chessFen());
+        this.applyCustomPieceSkins();
         return true;
     }
 
     onSnapEnd() {
-        this.board.position(this.game.fen());
+        this.board.position(this.game.chessFen());
+        this.applyCustomPieceSkins();
     }
 
     onClick(source, target) {
@@ -336,7 +393,8 @@ class SimpleChessGame {
         });
 
         if (move) {
-            this.board.position(this.game.fen());
+            this.board.position(this.game.chessFen());
+            this.applyCustomPieceSkins();
             this.updateLocalTimer();
         }
     }
@@ -347,11 +405,9 @@ class SimpleChessGame {
         console.log('New FEN:', data.fen);
         
         if (data.fen !== this.game.fen()) {
-            console.log('Updating game state with new FEN');
             this.game.load(data.fen);
-            this.board.position(data.fen);
-        } else {
-            console.log('FEN is the same, no update needed');
+            this.board.position(this.game.chessFen());
+            this.applyCustomPieceSkins();
         }
 
         if (data.gameOver) {
@@ -607,7 +663,8 @@ class SimpleChessGame {
         if (this.game && this.game.placeCustomPiece) {
             const success = this.game.placeCustomPiece(square, pieceSymbol, color);
             if (success) {
-                this.board.position(this.game.fen());
+                this.board.position(this.game.chessFen());
+                this.applyCustomPieceSkins();
             }
             return success;
         }

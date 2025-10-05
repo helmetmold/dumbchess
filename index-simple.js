@@ -346,20 +346,8 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Random FEN functionality
     function changeRandomFen() {
-        let options = [
-            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', //standard starting position
-            'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1', //rooks and kings only
-            'nnnnknnn/nnnnnnnn/8/8/8/8/NNNNNNNN/NNNNKNNN w - - 0 1', //knights only
-            'bbbbkbbb/bbbbbbbb/8/8/8/8/BBBBBBBB/BBBBKBBB w - - 0 1', //bishops only
-            'qqqqkqqq/qqqqqqqq/8/8/8/8/QQQQQQQQ/QQQQKQQQ w - - 0 1', //queens only
-            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', //standard position
-            '2pppp2/2pkpp2/8/8/8/8/2PPPP2/2PKPP2 w - - 0 1', //pawns and kings only
-            'kpppppp1/pppppp2/ppppp1PP/pppp1PPP/ppp1PPPP/pp1PPPPP/2PPPPPP/1PPPPPPK w - - 0 1', //pawns and kings
-            'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1', //rooks and kings with castling
-            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' //standard position
-        ];
-
-        const randomFen = options[Math.floor(Math.random() * options.length)];
+        // Use the same RandomFens system as online games
+        const randomFen = RandomFens.getWeightedRandomFen();
         console.log("Loading random FEN:", randomFen);
         
         // Wait for game instance to be ready and load the random FEN
