@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Chess Pieces Example</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./css/chessboard-1.0.0.min.css">
+    <script src="./js/jquery-3.7.1.min.js"></script>
+    <script src="./js/chessboard-1.0.0.min.js"></script>
+    <script src="./js/chess.min.js"></script>
+    
+    <!-- Custom Pieces System -->
+    <script src="./custom-pieces.js"></script>
+    <script src="./piece-manager.js"></script>
+    <script src="./custom-chess-enhanced.js"></script>
+    
+    <style>
+        #board {
+            max-width: 600px;
+        }
+        .piece-info {
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Custom Chess Pieces Demo</h1>
+            <p class="text-gray-600">Try out custom pieces with unique movement patterns</p>
+        </div>
+        
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Board Section -->
+            <div class="lg:w-2/3">
+                <div id="board" class="mx-auto"></div>
+                <div class="mt-4 text-center">
+                    <button id="resetBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md mr-2">
+                        Reset Board
+                    </button>
+                    <button id="flipBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">
+                        Flip Board
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Piece Info Section -->
+            <div class="lg:w-1/3">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Custom Pieces</h2>
+                
+                <div id="piece-list" class="space-y-4">
+                    <!-- Pieces will be dynamically loaded here -->
+                </div>
+                
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 class="font-bold text-blue-900 mb-2">Game Controls</h3>
+                    <div class="mb-3">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="checkValidationToggle" class="mr-2">
+                            <span class="text-sm text-blue-800">Enable Check Validation</span>
+                        </label>
+                        <p class="text-xs text-blue-700 mt-1">
+                            When disabled, you can move pieces that put the king in check.
+                        </p>
+                    </div>
+                    
+                    <h3 class="font-bold text-blue-900 mb-2">How to Use</h3>
+                    <ul class="text-sm text-blue-800 space-y-1">
+                        <li>• Click pieces to see valid moves</li>
+                        <li>• Custom pieces have unique movement patterns</li>
+                        <li>• Check the list for piece descriptions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize the enhanced chess engine
+        const pieceManager = new PieceManager();
+
+        // Load custom pieces explicitly
+        if (typeof CUSTOM_PIECES !== 'undefined') {
+            pieceManager.loadPieces(CUSTOM_PIECES);
+            console.log('✅ Custom pieces loaded:', pieceManager.pieces.size);
+        } else {
+            console.error('❌ CUSTOM_PIECES not found');
+        }
+
+        const game = new CustomChessEnhanced(pieceManager);
+        let board = null;
+        let customPosition = {}; // Track the actual board position independently
+        let enableCheckValidation = false; // Toggle for check validation
+        
+        // Board configuration
+        const config = {
+            draggable: true,
+            position: 'empty',  // Start with empty board
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd,
+            // Custom piece images
+            pieceTheme: function(piece) {
+                console.log('pieceTheme called for piece:', piece);
+                
+                // Check if board is initialized and if this is a custom piece
+                if (board && game && game.customPieces) {
+                    const currentPosition = board.position();
+                    const square = Object.keys(currentPosition).find(sq => currentPosition[sq] === piece);
+                    
+                    // If this piece is on a square that has a custom piece, use custom image
+                    if (square && game.customPieces[square]) {
+                        const customPiece = game.customPieces[square];
+                        if (customPiece.type === 'G') {
+                            if (piece === 'wQ') {
+                                console.log('Returning wG.svg for white Grasshopper');
+                                return 'img/wG.svg';
+                            }
+                            if (piece === 'bQ') {
+                                console.log('Returning bG.svg for black Grasshopper');
+                                return 'img/bG.svg';
+                            }
+                        }
+                    }
+                }
+                
+                // Standard pieces
+                const standardPath = 'img/' + piece + '.svg';
+                console.log('Returning standard path:', standardPath);
+                return standardPath;
+            }
+        };
+        
+        function onDragStart(source, piece, position, orientation) {
+            console.log('onDragStart:', source, piece);
+            
+            // Check if this is a custom piece game (even if no custom pieces remain)
+            const isCustomPieceGame = game.customPieces !== undefined;
+            
+            // For custom piece games, bypass engine's game_over check
+            // This prevents the board from resetting when all custom pieces are captured
+            if (!isCustomPieceGame && game.game_over()) {
+                console.log('Game is over, blocking move');
+                return false;
+            }
+            
+            // Only allow moving pieces of the current turn
+            const currentTurn = game.chess.turn();
+            console.log('Current turn:', currentTurn, 'Piece:', piece);
+            if ((currentTurn === 'w' && piece.search(/^b/) !== -1) ||
+                (currentTurn === 'b' && piece.search(/^w/) !== -1)) {
+                console.log('Not your turn - current turn:', currentTurn, 'piece:', piece);
+                return false;
+            }
+            
+            console.log('Move allowed for', piece);
+            return true;
+        }
+        
+        function isValidGrasshopperMove(from, to) {
+            // Convert squares to coordinates
+            const fromFile = from.charCodeAt(0) - 97; // a=0, b=1, etc.
+            const fromRank = parseInt(from[1]) - 1;   // 1=0, 2=1, etc.
+            const toFile = to.charCodeAt(0) - 97;
+            const toRank = parseInt(to[1]) - 1;
+            
+            // Calculate distance
+            const fileDiff = Math.abs(toFile - fromFile);
+            const rankDiff = Math.abs(toRank - fromRank);
+            
+            // Grasshopper moves exactly 2 squares in any direction
+            // Valid moves: (2,0), (0,2), (2,2), (1,2), (2,1)
+            const validMoves = [
+                [2, 0], [0, 2], [2, 2],  // Straight and diagonal 2 squares
+                [1, 2], [2, 1],           // Knight-like moves
+                [2, 2], [2, 1], [1, 2]   // All combinations
+            ];
+            
+            // Check if this is a valid Grasshopper move
+            for (let [validFile, validRank] of validMoves) {
+                if ((fileDiff === validFile && rankDiff === validRank) ||
+                    (fileDiff === validRank && rankDiff === validFile)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        function onDrop(source, target) {
+            console.log('onDrop:', source, target);
+            
+            // Check if this is a custom piece
+            const customPiece = game.customPieces && game.customPieces[source];
+            console.log('Custom piece on source:', customPiece);
+            
+            const piece = game.get(source);
+            console.log('Moving piece:', piece);
+            console.log('Source square:', source);
+            console.log('Game FEN:', game.fen());
+            
+            let move = null;
+            let isGrasshopperMove = false;
+
+            if (customPiece && customPiece.type === 'G') {
+                isGrasshopperMove = true;
+                console.log('This is a Grasshopper move!');
+                
+                // Validate Grasshopper move (must jump over exactly one piece)
+                if (!isValidGrasshopperMove(source, target)) {
+                    console.log('Invalid Grasshopper move - must jump over exactly one piece');
+                    return 'snapback';
+                }
+                // For custom pieces, handle the move manually but ensure turn switching
+                
+                // Remove the piece from source square
+                game.chess.remove(source);
+                
+                // Remove from custom pieces tracking
+                delete game.customPieces[source];
+                
+                // Place piece on target square (as Queen for engine compatibility)
+                game.chess.put({ type: 'q', color: customPiece.color }, target);
+                
+                // Add to custom pieces tracking
+                game.customPieces[target] = { type: 'G', color: customPiece.color };
+                
+                // Create a fake move object for compatibility
+                move = {
+                    from: source,
+                    to: target,
+                    piece: 'q',
+                    color: customPiece.color,
+                    flags: 'n',
+                    san: source + target
+                };
+                
+                // Manually switch turns by updating the FEN
+                const currentFen = game.chess.fen();
+                const fenParts = currentFen.split(' ');
+                fenParts[1] = customPiece.color === 'w' ? 'b' : 'w'; // Switch turn
+                
+                // Reset check flags to allow moves that might put king in check
+                // This is needed for custom pieces that might have different check rules
+                fenParts[2] = '-'; // Clear castling rights
+                fenParts[3] = '-'; // Clear en passant
+                
+                const newFen = fenParts.join(' ');
+                
+                // Load the updated FEN to trigger turn switching
+                game.chess.load(newFen);
+                
+                // Restore custom pieces after FEN load
+                game.customPieces[target] = { type: 'G', color: customPiece.color };
+                
+                console.log('Custom piece moved successfully, turn switched to:', game.chess.turn());
+            } else {
+                // Check if we're capturing a custom piece before the move
+                const isCapturingCustomPiece = game.customPieces && game.customPieces[target];
+                if (isCapturingCustomPiece) {
+                    console.log('Capturing custom piece:', game.customPieces[target]);
+                }
+                
+                // For standard pieces, choose validation method based on setting
+                console.log('Check validation enabled:', enableCheckValidation);
+                if (enableCheckValidation) {
+                    // Use engine validation (standard chess rules)
+                    move = game.chess.move({
+                        from: source,
+                        to: target,
+                        promotion: 'q'
+                    });
+                    console.log('Standard piece move used engine validation. Move result:', move);
+                } else {
+                    // Bypass engine validation (allows moves that put king in check)
+                    const piece = game.chess.get(source);
+                    if (piece) {
+                        // Remove piece from source
+                        game.chess.remove(source);
+                        
+                        // Remove from custom pieces tracking if it was a custom piece
+                        if (game.customPieces && game.customPieces[source]) {
+                            delete game.customPieces[source];
+                        }
+                        
+                        // Place piece on target (capturing any existing piece)
+                        game.chess.put(piece, target);
+                        
+                        // Create a fake move object for compatibility
+                        move = {
+                            from: source,
+                            to: target,
+                            piece: piece.type,
+                            color: piece.color,
+                            flags: 'n',
+                            san: source + target
+                        };
+                        
+                        // Manually switch turns
+                        const currentFen = game.chess.fen();
+                        const fenParts = currentFen.split(' ');
+                        fenParts[1] = piece.color === 'w' ? 'b' : 'w'; // Switch turn
+                        const newFen = fenParts.join(' ');
+                        game.chess.load(newFen);
+                        
+                        console.log('Standard piece move bypassed engine validation');
+                    }
+                }
+                
+                // If we captured a custom piece, remove it from tracking
+                if (move && isCapturingCustomPiece) {
+                    delete game.customPieces[target];
+                    console.log('Custom piece removed from tracking after successful capture');
+                }
+            }
+            
+            console.log('Is Grasshopper move:', isGrasshopperMove);
+
+            // If move is invalid, snap back
+            if (move === null) {
+                console.log('Move invalid, snapping back');
+                return 'snapback';
+            }
+            
+            console.log('Move successful:', move);
+            
+            // Update our custom position tracker instead of relying on engine FEN
+            // This prevents the board from resetting to the starting position
+            
+            if (isGrasshopperMove) {
+                // For custom piece moves, update the custom position directly
+                // Remove piece from source
+                delete customPosition[source];
+                // Add piece to target with custom symbol
+                customPosition[target] = customPiece.color + customPiece.type;
+                console.log('Updated custom position for Grasshopper move');
+            } else {
+                // For standard moves, update based on the move result
+                // Remove piece from source
+                delete customPosition[source];
+                // Add piece to target
+                if (move && move.piece) {
+                    customPosition[target] = move.color + move.piece.toUpperCase();
+                }
+                console.log('Updated custom position for standard move');
+            }
+            
+            // Remove captured custom pieces from our position tracker
+            if (game.customPieces && Object.keys(game.customPieces).length === 0) {
+                console.log('All custom pieces captured - maintaining current position');
+            }
+            
+            console.log('Updating board with custom position:', customPosition);
+            board.position(customPosition);
+            
+            // For custom pieces, bypass engine's check detection in status updates
+            // Custom pieces might have different check rules
+            if (isGrasshopperMove) {
+                console.log('Custom piece move - bypassing engine check detection');
+            }
+            
+            // Update status after move
+            updateStatus();
+        }
+        
+        function onSnapEnd() {
+            console.log('onSnapEnd called');
+            // Don't update board position here as it resets custom pieces
+            // The board position is already updated in onDrop for custom pieces
+        }
+        
+        function updateStatus() {
+            let status = '';
+            
+            // Use the engine's turn state, which we manually update for custom pieces
+            const currentTurn = game.chess.turn();
+            
+            // Check if this is a custom piece game (even if no custom pieces remain)
+            const isCustomPieceGame = game.customPieces !== undefined;
+            
+            // For custom piece games, always bypass engine's check detection
+            // This prevents the board from resetting when all custom pieces are captured
+            if (isCustomPieceGame) {
+                // Simple status without check detection
+                status = (currentTurn === 'w' ? 'White' : 'Black') + ' to move';
+                console.log('Custom piece game - bypassing check detection');
+            } else {
+                // Standard chess check detection
+                if (game.in_checkmate()) {
+                    status = 'Game over - ' + (currentTurn === 'w' ? 'Black' : 'White') + ' wins by checkmate!';
+                } else if (game.in_draw()) {
+                    status = 'Game over - Draw';
+                } else if (game.in_check()) {
+                    status = (currentTurn === 'w' ? 'White' : 'Black') + ' is in check!';
+                } else {
+                    status = (currentTurn === 'w' ? 'White' : 'Black') + ' to move';
+                }
+            }
+            
+            console.log('Current turn:', currentTurn, '-', status);
+        }
+        
+        // Setup starting position with custom pieces - just Grasshoppers
+        function setupCustomPosition() {
+            console.log('Setting up custom position...');
+            
+            // Test if images exist
+            const testImage = new Image();
+            testImage.onload = () => console.log('wG.svg loads successfully');
+            testImage.onerror = () => console.error('wG.svg failed to load');
+            testImage.src = 'img/wG.svg';
+            
+            const testImage2 = new Image();
+            testImage2.onload = () => console.log('bG.svg loads successfully');
+            testImage2.onerror = () => console.error('bG.svg failed to load');
+            testImage2.src = 'img/bG.svg';
+            
+            // Reset the game to empty board
+            game.reset();
+            
+            // Place standard pieces (simplified)
+            game.chess.put({ type: 'k', color: 'w' }, 'e1');
+            game.chess.put({ type: 'k', color: 'b' }, 'e8');
+            
+            // Add some pieces for Grasshoppers to jump over
+            game.chess.put({ type: 'p', color: 'w' }, 'c4');  // White pawn
+            game.chess.put({ type: 'p', color: 'b' }, 'c5');  // Black pawn
+            game.chess.put({ type: 'p', color: 'w' }, 'e4');  // White pawn
+            game.chess.put({ type: 'p', color: 'b' }, 'e5');  // Black pawn
+            game.chess.put({ type: 'r', color: 'w' }, 'd3');  // White rook
+            game.chess.put({ type: 'r', color: 'b' }, 'd6');  // Black rook
+            
+            // Place custom pieces - only Grasshoppers
+            // Use standard piece types in the engine, but track custom pieces separately
+            game.chess.put({ type: 'q', color: 'w' }, 'd4');  // White Grasshopper (as Queen)
+            game.chess.put({ type: 'q', color: 'b' }, 'd5');  // Black Grasshopper (as Queen)
+            
+            // Store custom piece information separately
+            game.customPieces = {
+                'd4': { type: 'G', color: 'w' },
+                'd5': { type: 'G', color: 'b' }
+            };
+            
+            // Debug: Check what's in the game state
+            console.log('Game FEN after placing pieces:', game.fen());
+            console.log('Piece on d4:', game.get('d4'));
+            console.log('Piece on d5:', game.get('d5'));
+            console.log('Custom pieces:', game.customPieces);
+            
+            // Set board position with custom pieces
+            // Use standard piece symbols but map to custom images via pieceTheme
+            customPosition = {
+                'e1': 'wK',  // White King
+                'e8': 'bK',  // Black King
+                'c4': 'wP',  // White pawn
+                'c5': 'bP',  // Black pawn
+                'e4': 'wP',  // White pawn
+                'e5': 'bP',  // Black pawn
+                'd3': 'wR',  // White rook
+                'd6': 'bR',  // Black rook
+                'd4': 'wQ',  // White Grasshopper (displays as Queen, custom image)
+                'd5': 'bQ'   // Black Grasshopper (displays as Queen, custom image)
+            };
+            
+            console.log('Custom position object:', customPosition);
+            console.log('About to call board.position()');
+            board.position(customPosition);
+            console.log('Board position set');
+            
+            // Check what's actually on the board
+            setTimeout(() => {
+                console.log('Current board position:', board.position());
+                console.log('Board DOM:', document.getElementById('board').innerHTML);
+            }, 100);
+        }
+        
+        // Load piece information into sidebar
+        function loadPieceInfo() {
+            const pieceList = document.getElementById('piece-list');
+            const pieces = pieceManager.getAllPieces();
+            
+            pieces.forEach(piece => {
+                const pieceDiv = document.createElement('div');
+                pieceDiv.className = 'piece-info';
+                pieceDiv.innerHTML = `
+                    <div class="font-bold text-lg text-gray-900 mb-1">
+                        ${piece.name} (${piece.symbol})
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">
+                        Value: ${piece.value} | Fallback: ${piece.fallbackSymbol}
+                    </div>
+                    <div class="text-sm text-gray-700">
+                        ${piece.description}
+                    </div>
+                `;
+                pieceList.appendChild(pieceDiv);
+            });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing board...');
+            board = ChessBoard('board', config);
+            console.log('Board created:', board);
+            
+            setupCustomPosition();
+            
+            // Add event listener for check validation toggle
+            const checkValidationToggle = document.getElementById('checkValidationToggle');
+            console.log('Check validation toggle element:', checkValidationToggle);
+            if (checkValidationToggle) {
+                console.log('Adding event listener to check validation toggle');
+                checkValidationToggle.addEventListener('change', function() {
+                    enableCheckValidation = this.checked;
+                    console.log('🔧 TOGGLE CHANGED - Check validation', enableCheckValidation ? 'ENABLED' : 'DISABLED');
+                    
+                    // Update status to reflect the change
+                    const status = document.getElementById('status');
+                    if (status) {
+                        if (enableCheckValidation) {
+                            status.innerHTML = '<div class="alert alert-info">✅ Check validation enabled - Standard chess rules apply</div>';
+                        } else {
+                            status.innerHTML = '<div class="alert alert-warning">⚠️ Check validation disabled - You can move pieces that put the king in check</div>';
+                        }
+                    }
+                });
+                
+                // Set initial state
+                enableCheckValidation = checkValidationToggle.checked;
+                console.log('Initial check validation state:', enableCheckValidation);
+            } else {
+                console.error('Check validation toggle not found!');
+            }
+            loadPieceInfo();
+            
+            // Button handlers
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                game.reset();
+                setupCustomPosition();
+                updateStatus();
+            });
+            
+            document.getElementById('flipBtn').addEventListener('click', function() {
+                board.flip();
+            });
+            
+            updateStatus();
+        });
+    </script>
+</body>
+</html>

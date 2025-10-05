@@ -138,12 +138,14 @@ class SimpleChessGame {
     }
 
     initializeGame() {
-        this.game = new Chess();
+        // Use CustomChessEnhanced instead of standard Chess
+        this.game = new CustomChessEnhanced();
         
         const config = {
             showErrors: true,
             draggable: true,
             position: 'start',
+            pieceTheme: this.getCustomPieceTheme(),
             onDragStart: this.onDragStart.bind(this),
             onDrop: this.onDrop.bind(this),
             onSnapEnd: this.onSnapEnd.bind(this),
@@ -151,6 +153,26 @@ class SimpleChessGame {
         };
 
         this.board = new ChessBoard('board', config);
+    }
+    
+    // Add this method to create piece theme function
+    getCustomPieceTheme() {
+        return (piece) => {
+            // Check if it's a custom piece
+            if (window.CUSTOM_PIECES) {
+                const customPiece = CUSTOM_PIECES.find(p => 
+                    piece === `w${p.symbol}` || piece === `b${p.symbol}`
+                );
+                
+                if (customPiece) {
+                    const color = piece.charAt(0) === 'w' ? 'white' : 'black';
+                    return customPiece.images[color];
+                }
+            }
+            
+            // Use existing piece images from img folder
+            return `img/${piece}.svg`;
+        };
     }
 
     setupEventListeners() {
@@ -161,6 +183,15 @@ class SimpleChessGame {
 
         document.getElementById('resignBtn').addEventListener('click', () => {
             this.resignGame();
+        });
+        
+        // Custom piece events
+        document.getElementById('addGrasshopperBtn').addEventListener('click', () => {
+            this.addCustomPiece('G');
+        });
+        
+        document.getElementById('addArchbishopBtn').addEventListener('click', () => {
+            this.addCustomPiece('A');
         });
 
         // Chat events
@@ -174,7 +205,15 @@ class SimpleChessGame {
             }
         });
     }
-
+    
+    // Add this method to handle custom piece placement
+    addCustomPiece(symbol) {
+        const pieceInfo = this.getCustomPieceInfo(symbol);
+        if (pieceInfo) {
+            alert(`Click on a square to place a ${pieceInfo.name}`);
+            // You could add click handlers here to place pieces
+        }
+    }
 
     markReady() {
         if (this.gameId) {
@@ -562,6 +601,27 @@ class SimpleChessGame {
         chatContainer.appendChild(messageEl);
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
+    
+    // Add method to place custom pieces
+    placeCustomPiece(square, pieceSymbol, color = 'w') {
+        if (this.game && this.game.placeCustomPiece) {
+            const success = this.game.placeCustomPiece(square, pieceSymbol, color);
+            if (success) {
+                this.board.position(this.game.fen());
+            }
+            return success;
+        }
+        return false;
+    }
+    
+    // Add method to get custom piece info
+    getCustomPieceInfo(symbol) {
+        if (this.game && this.game.getCustomPieceInfo) {
+            return this.game.getCustomPieceInfo(symbol);
+        }
+        return null;
+    }
+
 }
 
 // Initialize the game when the page loads

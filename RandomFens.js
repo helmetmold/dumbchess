@@ -74,6 +74,42 @@ const RandomFens = {
         "rrrrkrrr/pppppppp/8/8/8/8/PPPPPPPP/RRRRKRRR w - - 0 1"
     ],
     
+    // All Grasshoppers positions
+    allGrasshoppers: [
+        // All pieces are grasshoppers except kings
+        "ggggkggg/pppppppp/8/8/8/8/PPPPPPPP/GGGGKGGG w - - 0 1",
+        
+        // Grasshoppers everywhere
+        "ggggkggg/gggggggg/8/8/8/8/GGGGGGGG/GGGGKGGG w - - 0 1",
+        
+        // Mixed grasshoppers and pawns
+        "ggggkggg/pppppppp/8/8/8/8/PPPPPPPP/GGGGKGGG w - - 0 1",
+        
+        // Grasshoppers in formation
+        "ggggkggg/gggggggg/8/8/8/8/GGGGGGGG/GGGGKGGG w - - 0 1",
+        
+        // Grasshoppers with some pawns
+        "ggggkggg/pppppppp/8/8/8/8/PPPPPPPP/GGGGKGGG w - - 0 1"
+    ],
+    
+    // All Archbishops positions
+    allArchbishops: [
+        // All pieces are archbishops except kings
+        "aaaakaaa/pppppppp/8/8/8/8/PPPPPPPP/AAAAKAAA w - - 0 1",
+        
+        // Archbishops everywhere
+        "aaaakaaa/aaaaaaaa/8/8/8/8/AAAAAAAA/AAAAKAAA w - - 0 1",
+        
+        // Mixed archbishops and pawns
+        "aaaakaaa/pppppppp/8/8/8/8/PPPPPPPP/AAAAKAAA w - - 0 1",
+        
+        // Archbishops in formation
+        "aaaakaaa/aaaaaaaa/8/8/8/8/AAAAAAAA/AAAAKAAA w - - 0 1",
+        
+        // Archbishops with some pawns
+        "aaaakaaa/pppppppp/8/8/8/8/PPPPPPPP/AAAAKAAA w - - 0 1"
+    ],
+    
     // Crazy mixed positions
     crazyMixed: [
         // All different pieces mixed up
@@ -112,6 +148,8 @@ const RandomFens = {
                 ...this.allQueens,
                 ...this.allBishops,
                 ...this.allRooks,
+                ...this.allGrasshoppers,
+                ...this.allArchbishops,
                 ...this.crazyMixed
             ];
         } else if (this[category]) {
@@ -128,11 +166,13 @@ const RandomFens = {
     // Get a random FEN with weighted probability (more likely to get fun positions)
     getWeightedRandomFen: function() {
         const weights = {
-            allKnights: 0.3,    // 30% chance - most fun!
-            allQueens: 0.25,    // 25% chance - very chaotic
-            allBishops: 0.2,    // 20% chance - interesting diagonal play
-            allRooks: 0.15,     // 15% chance - lots of rooks
-            crazyMixed: 0.1     // 10% chance - completely random
+            allKnights: 0.2,       // 20% chance
+            allQueens: 0.2,        // 20% chance
+            allBishops: 0.15,      // 15% chance
+            allRooks: 0.15,        // 15% chance
+            allGrasshoppers: 0.15, // 15% chance - NEW!
+            allArchbishops: 0.1,   // 10% chance - NEW!
+            crazyMixed: 0.05       // 5% chance
         };
         
         const random = Math.random();

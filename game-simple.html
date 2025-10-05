@@ -12,6 +12,12 @@
     <script src="./js/chess.min.js"></script>
     <script src="./RandomFens.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Add custom piece support -->
+    <script src="./piece-manager.js"></script>
+    <script src="./custom-pieces.js"></script>
+    <script src="./custom-chess-enhanced.js"></script>
+    
     <style>
         #board {
             max-width: 600px;
@@ -148,6 +154,19 @@
                         </button>
                         <button id="resignBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors" disabled>
                             Resign
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Custom Pieces -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <h3 class="font-semibold text-gray-800 mb-3">Custom Pieces</h3>
+                    <div class="space-y-2">
+                        <button id="addGrasshopperBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            Add Grasshopper
+                        </button>
+                        <button id="addArchbishopBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            Add Archbishop
                         </button>
                     </div>
                 </div>
